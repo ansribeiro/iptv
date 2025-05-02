@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Players HLS com Tooltip</title>
+  <!-- Video.js CSS -->
+  <link href="https://vjs.zencdn.net/7.20.1/video-js.css" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f0f2f5;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 30px;
+    }
+
+    h1 {
+      color: #2c3e50;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2.5em;
+      letter-spacing: 1px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      margin-bottom: 30px;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .file-input {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+    }
+
+    .file-input input[type="file"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .custom-file-button {
+      background-color: #3498db;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.3s;
+      display: inline-block;
+    }
+
+    .custom-file-button:hover {
+      background-color: #2980b9;
+    }
+
+    select {
+      padding: 12px 16px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      background: white;
+      transition: border-color 0.3s;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+    }
+
+    .cards-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 25px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
+      border: 2px solid transparent;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 25px rgba(0,0,0,0.12);
+    }
+
+    .card-header {
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      transition: background-color 0.3s;
+    }
+
+    .card-header img {
+      width: 100px;
+      height: 100px;
+      margin-bottom: 15px;
+      border-radius: 12px;
+      object-fit: cover;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .card-name {
+      margin: 0 0 8px;
+      font-size: 1.2em;
+      font-weight: 600;
+      color: #2c3e50;
+      line-height: 1.2;
+    }
+
+    .card-group {
+      font-size: 0.9em;
+      color: #7f8c8d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .card-group::before {
+      content: "•";
+      color: #3498db;
+      font-size: 1.2em;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.7);
+    }
+
+    .modal-content {
+      background-color: #fff;
+      margin: 5% auto;
+      padding: 20px;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 800px;
+      animation: zoom 0.3s;
+      position: relative;
+    }
+
+    .close {
+      color: #aaa;
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: color 0.3s;
+    }
+
+    .close:hover,
+    .close:focus {
+      color: #000;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    @keyframes zoom {
+      from {transform: scale(0.95);}
+      to {transform: scale(1);}
+    }
+
+    @media (max-width: 600px) {
+      .card-header img {
+        width: 80px;
+        height: 80px;
+      }
+      
+      .card-name {
+        font-size: 1em;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Players HLS com Video.js</h1>
+    
+    <div class="controls">
+      <div class="file-input">
+        <input type="file" id="fileInput" accept=".m3u,.m3u8" />
+        <span class="custom-file-button">Selecionar Arquivo M3U</span>
+      </div>
+      <select id="groupFilter">
+        <option value="all">Todos os Grupos</option>
+      </select>
+    </div>
+
+    <div class="cards-container" id="cardsContainer"></div>
+  </div>
+
+  <!-- Modal -->
+  <div id="videoModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <div id="videoContainer"></div>
+    </div>
+  </div>
+
+  <!-- Video.js JS -->
+  <script src="https://vjs.zencdn.net/7.20.1/video.min.js"></script>
+  <!-- Plugin HLS.js -->
+  <script src="https://cdn.jsdelivr.net/npm/videojs-http-streaming@2.21.0/dist/videojs-http-streaming.min.js"></script>
+
+  <script>
+    // Função para converter conteúdo M3U para JSON
+    function m3uToJson(content) {
+	  const lines = content.split(/\r?\n/);
+	  const result = [];
+	  let currentEntry = {};
+
+	  lines.forEach(line => {
+		if (line.startsWith('#EXTINF:')) {
+		  // Extrai os atributos da linha
+		  const attrMatch = line.match(/#EXTINF:-1\s+(.*?)\s*,(.*)$/i);
+		  if (attrMatch) {
+			const attrsStr = attrMatch[1];
+			const name = attrMatch[2].trim();
+
+			// Extrai cada atributo individualmente
+			const tvgIdMatch = attrsStr.match(/tvg-id="([^"]*)"/i);
+			const tvgLogoMatch = attrsStr.match(/tvg-logo="([^"]*)"/i);
+			const groupTitleMatch = attrsStr.match(/group-title="([^"]*)"/i);
+
+			currentEntry = {
+			  tvgId: tvgIdMatch ? tvgIdMatch[1] : '',
+			  tvgLogo: tvgLogoMatch ? tvgLogoMatch[1] : '',
+			  groupTitle: groupTitleMatch ? groupTitleMatch[1] : '',
+			  name: name || ''
+			};
+		  }
+		} else if (line.trim() && !line.startsWith('#')) {
+		  currentEntry.url = line.trim();
+		  result.push(currentEntry);
+		  currentEntry = {};
+		}
+	  });
+
+	  return result;
+	}
+
+    // Função para criar player em modal
+    function showModalPlayer(entry) {
+      const modal = document.getElementById('videoModal');
+      const videoContainer = document.getElementById('videoContainer');
+      
+      // Limpa conteúdo anterior
+      videoContainer.innerHTML = '';
+      
+      // Cria elemento de vídeo
+      const videoId = `modal-player`;
+      const video = document.createElement('video');
+      video.id = videoId;
+      video.className = 'video-js vjs-default-skin';
+      video.controls = true;
+      video.setAttribute('playsinline', '');
+	  video.setAttribute('autoplay', '');
+      video.style.width = '100%';
+      video.style.height = 'auto';
+      
+      // Adiciona fonte do vídeo
+      const source = document.createElement('source');
+      source.src = entry.url;
+      source.type = 'application/x-mpegURL';
+      video.appendChild(source);
+      videoContainer.appendChild(video);
+      
+      // Inicializa o player com HLS.js
+      const player = videojs(videoId, {
+        html5: {
+          hls: {
+            overrideNative: true
+          }
+        }
+      });
+
+      // Mostra modal
+      modal.style.display = 'block';
+      
+      // Fecha modal ao pressionar ESC
+      document.addEventListener('keydown', function(event) {
+        if (event.key === "Escape" && modal.style.display === 'block') {
+          closeModal(player);
+        }
+      });
+      
+      // Fecha modal ao clicar fora do conteúdo
+      window.addEventListener('click', function(event) {
+        if (event.target === modal) {
+          closeModal(player);
+        }
+      });
+      
+      // Fecha modal ao clicar no X
+      document.querySelector('.close').addEventListener('click', () => {
+        closeModal(player);
+      });
+    }
+
+    // Função para fechar o modal
+    function closeModal(player) {
+      const modal = document.getElementById('videoModal');
+      modal.style.display = 'none';
+      
+      // Remove o player para liberar recursos
+      if (player && !player.isDisposed()) {
+        player.pause();
+        player.dispose();
+      }
+    }
+
+    // Função para criar cards
+    function createCards(data) {
+      const container = document.getElementById('cardsContainer');
+      container.innerHTML = '';
+      
+      data.forEach((entry, index) => {
+        // Cria card
+        const card = document.createElement('div');
+        card.className = 'card';
+        
+        // Cria header do card
+        const header = document.createElement('div');
+        header.className = 'card-header';
+        
+        // Logo
+        const logo = document.createElement('img');
+        logo.src = entry.tvgLogo || 'https://via.placeholder.com/100x100?text=Sem+Imagem';
+        logo.alt = entry.name;
+        
+        // Informações
+        const info = document.createElement('div');
+        
+        const name = document.createElement('h3');
+        name.className = 'card-name';
+        name.textContent = entry.name;
+        
+        const group = document.createElement('div');
+        group.className = 'card-group';
+        group.textContent = entry.groupTitle || 'Sem Grupo';
+        
+        info.appendChild(name);
+        info.appendChild(group);
+        
+        header.appendChild(logo);
+        header.appendChild(info);
+        
+        // Adiciona ao card
+        card.appendChild(header);
+        container.appendChild(card);
+        
+        // Evento de clique
+        card.addEventListener('click', () => showModalPlayer(entry));
+      });
+    }
+
+    // Evento para processar o arquivo
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      
+      reader.onload = function (event) {
+        try {
+          const content = event.target.result;
+          const jsonData = m3uToJson(content);
+          
+          // Atualiza filtro de grupos
+          const groups = [...new Set(jsonData.map(item => item.groupTitle || 'Sem Grupo'))];
+          const filter = document.getElementById('groupFilter');
+          filter.innerHTML = '<option value="all">Todos os Grupos</option>';
+          
+          groups.forEach(group => {
+            const option = document.createElement('option');
+            option.value = group;
+            option.textContent = group;
+            filter.appendChild(option);
+          });
+          
+          // Cria cards iniciais
+          createCards(jsonData);
+          
+          // Adiciona evento de filtro
+          filter.onchange = () => {
+            const selectedGroup = filter.value;
+            const filteredData = selectedGroup === 'all' 
+              ? jsonData 
+              : jsonData.filter(item => item.groupTitle === selectedGroup);
+            createCards(filteredData);
+          };
+        } catch (error) {
+          alert(`Erro ao processar o arquivo: ${error.message}`);
+        }
+      };
+      
+      reader.readAsText(file);
+    });
+  </script>
+</body>
+</html>
